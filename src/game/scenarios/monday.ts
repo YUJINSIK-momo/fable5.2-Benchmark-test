@@ -182,6 +182,7 @@ export const monday: Scenario = {
             { t: "flag", set: "vote_hands" },
             { t: "msg", who: "oh", text: "좋죠 ㅎㅎ 회의실에서 손 들죠", typing: 1800 },
             { t: "sys", text: "거수투표가 열렸다" },
+            { t: "mascot", mood: "shock", text: "투표요…? 굳이…?" },
             { t: "pause", ms: 700 },
             { t: "sys", text: "오 팀장 — 순댓국에 손" },
             // 손을 들기 전까지는 돈가스가 이기고 있었다
@@ -200,6 +201,7 @@ export const monday: Scenario = {
           beats: [
             { t: "flag", set: "vote_anon" },
             { t: "sys", text: "익명 설문이 올라왔다" },
+            { t: "mascot", mood: "smug", text: "익명이면 다들 말이 많아지지." },
             { t: "pause", ms: 1500 },
             { t: "lean", who: "park", to: "donkatsu" },
             { t: "poll" },
@@ -243,6 +245,7 @@ export const monday: Scenario = {
       rank: "처세의 달인",
       title: "처세의 달인",
       blurb: "식당 이름은 한 번도 안 꺼냈다. 그런데 다들 내가 먹고 싶던 걸 먹으러 간다.",
+      mascot: { mood: "smug", line: "말 한마디 안 하고 이겼네. 무섭다, 너." },
       outro: [
         { t: "sys", text: "12:01 · 1층 돈가스로 출발" },
         { t: "msg", who: "kim", text: "네 자리 예약해뒀습니다", typing: 1100, if: { none: ["park_map"] } },
@@ -254,6 +257,7 @@ export const monday: Scenario = {
       rank: "추진력 있는 막내",
       title: "말 꺼낸 사람이 예약",
       blurb: "대놓고 밀어서 이겼다. 식당에 전화해서 네 자리 있냐고 묻는 사람은 나다.",
+      mascot: { mood: "meh", line: "이겼으면 됐지. 전화는 네가 해." },
       outro: [
         { t: "sys", text: "12:01 · 1층 돈가스로 출발" },
         { t: "msg", who: "oh", text: "그럼 예약 좀 부탁해요 ㅎㅎ", typing: 2200 },
@@ -265,6 +269,7 @@ export const monday: Scenario = {
       rank: "절차적 정당성 담당",
       title: "공평하게 졌다",
       blurb: "투표 방식을 바꿨더니 결과가 바뀌었다. 손을 들 때는 다들 팀장을 본다.",
+      mascot: { mood: "tired", line: "공평하게 졌잖아. 그래도 먹어야지 어떡해…" },
       outro: [
         { t: "sys", text: "12:03 · 순댓국으로 출발" },
         { t: "msg", who: "oh", text: "역시 투표가 깔끔하네요 ㅎㅎ", typing: 2000 },
@@ -275,6 +280,7 @@ export const monday: Scenario = {
       rank: "면담 예정자",
       title: "할 말은 했다",
       blurb: "속은 시원한데 국물은 뜨겁다. 팀장 맞은편 자리가 비어 있다.",
+      mascot: { mood: "shock", line: "그걸 진짜 보냈어…? 3시에 봐." },
       outro: [
         { t: "sys", text: "12:02 · 순댓국으로 출발" },
         { t: "msg", who: "oh", text: "이따 3시에 잠깐 볼까요 ㅎㅎ", typing: 3400 },
@@ -285,6 +291,7 @@ export const monday: Scenario = {
       rank: "프로 따라가기러",
       title: "오늘도 따라갔다",
       blurb: "돈가스는 내일도 있다. 아마도.",
+      mascot: { mood: "tired", line: "아무거나라며. 그럼 순댓국이지 뭐." },
       outro: [
         { t: "sys", text: "12:02 · 순댓국으로 출발" },
         { t: "msg", who: "kim", text: "2,000원 남았습니다", typing: 1200 },
@@ -295,6 +302,7 @@ export const monday: Scenario = {
       rank: "점심 분사(分社) 대표",
       title: "팀은 갈라졌지만 수프는 따뜻했다",
       blurb: "넷이 나가서 둘씩 먹었다. 크림수프는 리필이 됐다.",
+      mascot: { mood: "smug", line: "수프는 리필 되더라. 팀은 안 되고." },
       hidden: true,
       outro: [],
     },

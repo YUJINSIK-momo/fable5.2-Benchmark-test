@@ -6,18 +6,23 @@ import { todayKST } from "@/game/daily";
 import { buildReceipt, type Receipt } from "@/game/receipt";
 import { isOpen, scenarioFor, WEEK } from "@/game/scenarios";
 import { loadSeen, saveSeen } from "@/game/storage";
+import { db, type DayStats } from "@/lib/db";
+import { loadNickname, playerId, saveNickname } from "@/lib/identity";
 import type {
   CharId,
   DirectMessage,
   EndingId,
   Logic,
+  Mood,
   Option,
   RestaurantId,
   Scenario,
   Shown,
   Speaker,
 } from "@/game/types";
+import { Mascot } from "./Mascot";
 import { ReceiptCard } from "./ReceiptCard";
+import { RoomScreen } from "./Room";
 import { UrgeComposer } from "./UrgeComposer";
 
 type Line =
@@ -38,7 +43,11 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export function Game() {
   const [today, setToday] = useState<{ key: string; dow: number } | null>(null);
   const [seen, setSeen] = useState<EndingId[]>([]);
-  const [screen, setScreen] = useState<"intro" | "chat" | "result">("intro");
+  const [screen, setScreen] = useState<"intro" | "chat" | "result" | "room">("intro");
+  const [nickname, setNickname] = useState("");
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [stats, setStats] = useState<DayStats | null>(null);
+  const [lastEnding, setLastEnding] = useState<EndingId | null>(null);
   const [run, setRun] = useState(0);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
 
@@ -46,20 +55,49 @@ export function Game() {
   useEffect(() => {
     setToday(todayKST());
     setSeen(loadSeen());
+    setNickname(loadNickname());
+    // 공유받은 투표방 링크로 들어온 경우
+    const code = new URLSearchParams(window.location.search).get("room");
+    if (code) {
+      setRoomCode(code);
+      setScreen("room");
+    }
   }, []);
+
+  const leaveRoom = () => {
+    window.history.replaceState(null, "", window.location.pathname);
+    setRoomCode(null);
+    setScreen("intro");
+  };
 
   if (!today) return <main className="phone" aria-busy="true" />;
 
   const sc = scenarioFor(today.dow);
   const total = Object.keys(sc.endings).length;
 
+  if (screen === "room") {
+    return (
+      <RoomScreen
+        code={roomCode}
+        nickname={nickname}
+        onNickname={(n) => setNickname(saveNickname(n))}
+        onExit={leaveRoom}
+      />
+    );
+  }
+
   if (screen === "intro") {
     return (
       <main className="phone intro">
-        <p className="intro-clock">{sc.clock}</p>
-        <h1 className="intro-title">
-          아무거나요<span>㈜</span>
-        </h1>
+        <div className="intro-head">
+          <div>
+            <p className="intro-clock">{sc.clock}</p>
+            <h1 className="intro-title">
+              아무거나요<span>㈜</span>
+            </h1>
+          </div>
+          <Mascot small />
+        </div>
         <p className="intro-lede">
           내가 먹고 싶은 점심을,
           <br />
@@ -88,9 +126,37 @@ export function Game() {
         </ol>
         {!isOpen(today.dow) && <p className="week-note">오늘 요일은 아직 준비 중이라 월요일 편이 열립니다.</p>}
 
-        <button className="cta" onClick={() => setScreen("chat")}>
-          단톡방 들어가기
-        </button>
+        <label className="field">
+          닉네임 (랭킹과 기명 투표에 보여요 · 비워도 됩니다)
+          <input
+            value={nickname}
+            maxLength={12}
+            placeholder="예: 영업2팀 막내"
+            onChange={(e) => setNickname(e.target.value)}
+            onBlur={() => setNickname(saveNickname(nickname))}
+          />
+        </label>
+        <div className="intro-actions">
+          <button
+            className="cta"
+            onClick={() => {
+              setNickname(saveNickname(nickname));
+              setScreen("chat");
+            }}
+          >
+            단톡방 들어가기
+          </button>
+          <button
+            className="cta ghost"
+            onClick={() => {
+              setNickname(saveNickname(nickname));
+              setRoomCode(null);
+              setScreen("room");
+            }}
+          >
+            진짜 점심 투표 열기
+          </button>
+        </div>
         <p className="seen">
           본 엔딩 {seen.length}/{total}
         </p>
@@ -102,6 +168,9 @@ export function Game() {
     return (
       <ReceiptCard
         receipt={receipt}
+        stats={stats}
+        endingId={lastEnding}
+        titles={Object.fromEntries(Object.values(sc.endings).map((e) => [e.id, e.hidden ? "숨은 엔딩" : e.title]))}
         seen={seen.length}
         total={total}
         onRetry={() => {
@@ -116,8 +185,15 @@ export function Game() {
     <Chat
       key={run}
       sc={sc}
-      onEnd={(logic, endingId) => {
+      onEnd={(logic, endingId, path) => {
         setSeen(saveSeen(endingId));
+        setLastEnding(endingId);
+        setStats(null);
+        // 기록이 실패해도 영수증은 그대로 보여준다
+        db.recordPlay(playerId(), nickname, sc.id, endingId, path)
+          .then(() => db.dayStats(sc.id))
+          .then(setStats)
+          .catch(() => setStats(null));
         setReceipt(buildReceipt(sc, logic, endingId, today.key));
         setScreen("result");
       }}
@@ -125,7 +201,13 @@ export function Game() {
   );
 }
 
-function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: EndingId) => void }) {
+function Chat({
+  sc,
+  onEnd,
+}: {
+  sc: Scenario;
+  onEnd: (logic: Logic, ending: EndingId, path: string) => void;
+}) {
   const [lines, setLines] = useState<Line[]>([]);
   const [leans, setLeans] = useState(() => initLogic(sc).leans);
   const [bumped, setBumped] = useState<CharId | null>(null);
@@ -133,6 +215,8 @@ function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: Endin
   const [mode, setMode] = useState<Mode>({ k: "playing" });
   const [turn, setTurn] = useState(0);
   const [profile, setProfile] = useState<CharId | null>(null);
+  const [peek, setPeek] = useState<{ id: number; mood: Mood; text: string } | null>(null);
+  const path = useRef<string[]>([]);
   const [dmLines, setDmLines] = useState<{ mine: boolean; text: string }[]>([]);
 
   const logic = useRef<Logic>(initLogic(sc));
@@ -165,6 +249,9 @@ function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: Endin
         } else if (item.t === "sys") {
           setLines((l) => [...l, { k: "sys", id, text: item.text }]);
           await wait(700);
+        } else if (item.t === "mascot") {
+          setPeek({ id, mood: item.mood, text: item.text });
+          await wait(1500);
         } else if (item.t === "poll") {
           setLines((l) => [...l, { k: "poll", id, counts: item.counts }]);
           await wait(1200);
@@ -188,7 +275,7 @@ function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: Endin
       const out = resolve(sc.endings[endingId].outro, logic.current);
       await play(out.shown);
       await wait(1100);
-      if (alive.current) onEnd(logic.current, endingId);
+      if (alive.current) onEnd(logic.current, endingId, path.current.join(">"));
     },
     [onEnd, play, sc, wait],
   );
@@ -232,6 +319,7 @@ function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: Endin
   const send = async (opt: Option, variant?: "soft" | "raw") => {
     fast.current = false;
     setMode({ k: "playing" });
+    path.current.push(variant ? `${opt.id}:${variant}` : opt.id);
     const out = choose(opt, logic.current, variant);
     logic.current = out.state;
     await play(out.shown);
@@ -258,6 +346,7 @@ function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: Endin
     if (accept) {
       setDmLines((l) => [...l, { mine: true, text: dm.accept.label }]);
       await wait(1200);
+      path.current.push("dm:accept");
       setMode({ k: "playing" });
       await finish(dm.accept.ending);
       return;
@@ -413,6 +502,16 @@ function Chat({ sc, onEnd }: { sc: Scenario; onEnd: (logic: Logic, ending: Endin
           <p className="dock-idle">{left > 0 ? "화면을 누르면 빨리 넘어갑니다" : "…"}</p>
         )}
       </footer>
+
+      {peek && (
+        <div key={peek.id} className="peek" onAnimationEnd={(e) => {
+            // 말풍선 애니메이션이 끝난 것까지 여기로 올라오므로, 자기 것만 본다
+            if (e.target === e.currentTarget) setPeek(null);
+          }}
+        >
+          <Mascot small mood={peek.mood} line={peek.text} />
+        </div>
+      )}
 
       {mode.k === "dm" && (
         <div className="sheet-back">

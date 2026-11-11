@@ -100,6 +100,9 @@ export function resolve(beats: Beat[], from: Logic): { shown: Shown[]; state: Lo
       case "propose":
         if (!state.proposers[b.what]) state.proposers[b.what] = b.who;
         break;
+      case "mascot":
+        shown.push({ t: "mascot", mood: b.mood, text: b.text });
+        break;
       case "poll":
         shown.push({ t: "poll", counts: countVotes(state.leans) });
         break;

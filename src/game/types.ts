@@ -1,3 +1,5 @@
+export type Mood = "meh" | "smug" | "tired" | "shock";
+
 export type RestaurantId = "donkatsu" | "sundae" | "cafeteria";
 export type CharId = "oh" | "kim" | "park";
 export type Speaker = CharId | "me";
@@ -38,6 +40,7 @@ export type Beat = (
   | { t: "flag"; set: string }
   | { t: "propose"; who: Speaker; what: RestaurantId }
   | { t: "poll" }
+  | { t: "mascot"; mood: Mood; text: string }
 ) & { if?: Cond };
 
 export interface DirectMessage {
@@ -84,6 +87,8 @@ export interface Ending {
   title: string;
   blurb: string;
   hidden?: boolean;
+  /** 영수증 위에서 넵무새가 하는 말 */
+  mascot: { mood: Mood; line: string };
   outro: Beat[];
 }
 
@@ -121,4 +126,5 @@ export type Shown =
   | { t: "sys"; text: string }
   | { t: "pause"; ms: number }
   | { t: "lean"; who: CharId; to: RestaurantId }
-  | { t: "poll"; counts: Record<RestaurantId, number> };
+  | { t: "poll"; counts: Record<RestaurantId, number> }
+  | { t: "mascot"; mood: Mood; text: string };

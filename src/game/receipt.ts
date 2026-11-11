@@ -1,6 +1,6 @@
 import { tally } from "./engine";
 import { receiptNo } from "./daily";
-import type { EndingId, Logic, Scenario, Speaker } from "./types";
+import type { EndingId, Logic, Mood, Scenario, Speaker } from "./types";
 
 export interface Receipt {
   company: string;
@@ -11,6 +11,7 @@ export interface Receipt {
   title: string;
   blurb: string;
   hidden: boolean;
+  mascot: { mood: Mood; line: string };
 }
 
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
@@ -31,6 +32,7 @@ export function buildReceipt(sc: Scenario, s: Logic, endingId: EndingId, dateKey
     title: ending.title,
     blurb: ending.blurb,
     hidden: Boolean(ending.hidden),
+    mascot: ending.mascot,
   };
 
   if (endingId === "soup") {
